@@ -40,12 +40,30 @@ dotnet test
 dotnet run --project src/Banco.Api
 ```
 
-La API expone `GET /health` y Swagger en desarrollo.
+### Base de datos
+
+Usa SQL Server (probado con SQL Server Express, instancia `localhost\SQLEXPRESS`, autenticación de Windows). Ejecutá el script [sql/01_crear_base_y_tablas.sql](sql/01_crear_base_y_tablas.sql) desde SSMS: crea la base `MiniCoreBancario`, las tablas y tres cuentas de ejemplo. Es idempotente. Si tu instancia es otra, cambiá la cadena `ConnectionStrings:Banco` en `src/Banco.Api/appsettings.json`.
+
+### Endpoints
+
+- `GET /health`
+- `GET /cuentas/{id}/saldo`: devuelve titular y saldo, o 404 si la cuenta no existe.
+
+Swagger queda disponible en desarrollo.
+
+### Modelo de datos
+
+- `Cuentas`: `Saldo DECIMAL(18,2)` con `CHECK (Saldo >= 0)`, así la regla del saldo también la garantiza la base.
+- `Movimientos`: clave foránea a `Cuentas` e índice por `(CuentaId, Fecha)` para consultar movimientos por período.
+
+### Acceso a datos
+
+`ICuentaRepositorio` está definido en la capa de negocio y lo implementa `Banco.Datos` con ADO.NET y consultas parametrizadas (previene SQL injection). El negocio no depende de SQL Server.
 
 ## Roadmap
 
 - [x] Esqueleto en capas, entidad `Cuenta` con reglas y tests
-- [ ] Persistencia en SQL Server y consulta de saldo
+- [x] Persistencia en SQL Server y consulta de saldo
 - [ ] Transferencia entre cuentas con transacción ACID
 - [ ] Consulta de movimientos por rango de fechas con paginación
 - [ ] Módulo en VB.NET
