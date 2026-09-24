@@ -48,6 +48,16 @@ Usa SQL Server (probado con SQL Server Express, instancia `localhost\SQLEXPRESS`
 
 - `GET /health`
 - `GET /cuentas/{id}/saldo`: devuelve titular y saldo, o 404 si la cuenta no existe.
+- `POST /transferencias`: cuerpo `{ "origenId": 1, "destinoId": 2, "monto": 100.50, "descripcion": "opcional" }`. Devuelve `200` con los saldos resultantes, `400` si los datos son inválidos (misma cuenta, monto ≤ 0 o con más de 2 decimales), `404` si alguna cuenta no existe y `422` si el origen no tiene saldo suficiente.
+
+### Transferencias y transacciones (ACID)
+
+Una transferencia debita una cuenta, acredita la otra y registra dos movimientos (`TRANSFER_OUT` y `TRANSFER_IN`). `TransferenciaRepositorio` lo hace dentro de **una sola transacción SQL**: si algo falla, se deshace todo (`ROLLBACK`) y no queda un débito sin su crédito.
+
+- **`UPDLOCK` al leer los saldos:** bloquea las filas hasta el final de la transacción, para que dos transferencias simultáneas no lean el mismo saldo y lo dejen inconsistente.
+- **Bloqueo en orden de `Id`:** evita deadlocks entre transferencias cruzadas (A→B y B→A al mismo tiempo).
+- **Reglas de dinero reutilizadas:** el saldo suficiente lo valida `Cuenta.Retirar`, y el `CHECK (Saldo >= 0)` de la base queda como red de seguridad.
+- **Validación previa:** `TransferenciaServicio` rechaza datos inválidos antes de abrir una transacción.
 
 Swagger queda disponible en desarrollo.
 
@@ -64,7 +74,7 @@ Swagger queda disponible en desarrollo.
 
 - [x] Esqueleto en capas, entidad `Cuenta` con reglas y tests
 - [x] Persistencia en SQL Server y consulta de saldo
-- [ ] Transferencia entre cuentas con transacción ACID
+- [x] Transferencia entre cuentas con transacción ACID
 - [ ] Consulta de movimientos por rango de fechas con paginación
 - [ ] Módulo en VB.NET
 - [ ] Cliente SOAP contra un servicio de prueba
